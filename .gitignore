@@ -6,4 +6,4 @@ lm_cache
 
 *.egg-info/
 results/
-prompt.json
+
