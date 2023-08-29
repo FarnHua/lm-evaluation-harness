@@ -13,6 +13,7 @@ import numpy as np
 import transformers
 
 
+
 @positional_deprecated
 def simple_evaluate(
     model,
@@ -30,6 +31,9 @@ def simple_evaluate(
     decontamination_ngrams_path=None,
     write_out=False,
     output_base_path=None,
+    use_prompt=True,
+    system_prompt='',
+    user_prompt=''
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -76,6 +80,7 @@ def simple_evaluate(
         lm = lm_eval.models.get_model(model).create_from_arg_string(
             model_args, {"batch_size": batch_size, "max_batch_size": max_batch_size, "device": device}
         )
+    
     elif isinstance(model, transformers.PreTrainedModel):
         lm = lm_eval.models.get_model("hf-causal")(
                 pretrained=model,
@@ -86,7 +91,7 @@ def simple_evaluate(
     else:
         assert isinstance(model, lm_eval.base.LM)
         lm = model
-
+    
     if not no_cache:
         lm = lm_eval.base.CachingLM(
             lm,
@@ -97,6 +102,7 @@ def simple_evaluate(
             + ".db",
         )
 
+    ## get_tasks
     task_dict = lm_eval.tasks.get_task_dict(tasks)
 
     if check_integrity:
@@ -112,6 +118,9 @@ def simple_evaluate(
         decontamination_ngrams_path=decontamination_ngrams_path,
         write_out=write_out,
         output_base_path=output_base_path,
+        use_prompt=use_prompt,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt
     )
 
     # add info about the model and few shot config
@@ -138,6 +147,21 @@ def simple_evaluate(
 
 decontaminate_suffix = "_decontaminate"
 
+## for llama2
+def get_prompt(sentence, system_prompt='', user_prompt=''):
+    ## modified from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
+    
+    texts = []
+    
+    if system_prompt != "":
+        # system_prompt = "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.\n\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
+        system_prompt = f'<<SYS>>\n{system_prompt}\n<</SYS>>\n\n'
+        texts = [f'<s>[INST] {system_prompt}']
+        texts.append(f"{user_prompt}{sentence} [/INST]")
+    else:
+        texts.append(f"{user_prompt}{sentence}")
+
+    return ''.join(texts)
 
 @positional_deprecated
 def evaluate(
@@ -151,6 +175,9 @@ def evaluate(
     decontamination_ngrams_path=None,
     write_out=False,
     output_base_path=None,
+    use_prompt=True,
+    system_prompt='',
+    user_prompt=''
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -214,6 +241,7 @@ def evaluate(
 
     # get lists of each type of request
     for task_name, task in task_dict_items:
+        
         versions[task_name] = task.VERSION
         # default to test doc, fall back to val doc if validation unavailable
         # TODO: the test-fallback-to-val system isn't final, we should revisit it at some point
@@ -232,6 +260,8 @@ def evaluate(
         rnd.seed(42)
         rnd.shuffle(task_docs)
         print(f"Task: {task_name}; number of docs: {len(task_docs)}")
+    
+        
 
         if write_out:
             prompt_details = []
@@ -254,7 +284,13 @@ def evaluate(
             ctx = task.fewshot_context(
                 doc=doc, num_fewshot=num_fewshot, rnd=rnd, description=description
             )
+            
+            
+            ## for llama2
+            if isinstance(lm.model, transformers.LlamaForCausalLM):
+                ctx = get_prompt(ctx, system_prompt=system_prompt, user_prompt=user_prompt)
             reqs = task.construct_requests(doc, ctx)
+            
 
             if write_out:
                 prompt_details.append({"doc_id": doc_id})
@@ -302,14 +338,16 @@ def evaluate(
         #       they should end up next to each other.
 
         print("Running", reqtype, "requests")
-        resps = getattr(lm, reqtype)([req.args for req in reqs])
-        resps = [
-            x if req.index is None else x[req.index] for x, req in zip(resps, reqs)
-        ]
+        
+        # reqs: all request of one reqtype
+        # req.args: (prompt, response)
+        resps = getattr(lm, reqtype)([req.args for req in reqs]) ## using caching
+        
+        resps = [x if req.index is None else x[req.index] for x, req in zip(resps, reqs)] # list of logProb, List[float]
 
         for resp, (i, task_name, doc, doc_id) in zip(resps, requests_origin[reqtype]):
             process_res_queue[(task_name, doc_id)].append((i, resp))
-
+            
             if write_out:
                 write_out_info[task_name][doc_id][f"logit_{i}"] = resp
                 task = task_dict[task_name]
@@ -333,6 +371,8 @@ def evaluate(
         doc = docs[(task_name, doc_id)]
 
         metrics = task.process_results(doc, requests)
+        
+        
         for metric, value in metrics.items():
             vals[(task_name, metric)].append(value)
 

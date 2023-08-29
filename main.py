@@ -30,12 +30,19 @@ def parse_args():
     parser.add_argument("--check_integrity", action="store_true")
     parser.add_argument("--write_out", action="store_true", default=False)
     parser.add_argument("--output_base_path", type=str, default=None)
+    parser.add_argument("--use_prompt", action="store_true", default=False)
+    parser.add_argument("--prompts_file", type=str, required=True)
 
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    
+    with open(args.prompts_file, 'r') as f:
+        prompts = json.load(f)
+    system_prompt = prompts['system_prompt']
+    user_prompt = prompts['user_prompt']
 
     assert not args.provide_description  # not implemented
 
@@ -71,6 +78,9 @@ def main():
         check_integrity=args.check_integrity,
         write_out=args.write_out,
         output_base_path=args.output_base_path,
+        use_prompt=args.use_prompt,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt
     )
 
     dumped = json.dumps(results, indent=2)
