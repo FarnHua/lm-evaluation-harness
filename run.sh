@@ -5,8 +5,9 @@ export HUGGINGFACE_HUB_CACHE=/work/u5273929/huggingface_hub
 
 
 TASK=$1
-OUTPUT_PATH=$2
-PROMPTS_FILE=$3
+FEW_SHOT=$2
+OUTPUT_PATH=$3
+PROMPTS_FILE=$4
 
 mkdir -p $OUTPUT_PATH
 
@@ -14,7 +15,7 @@ python main.py \
     --model hf-causal-experimental \
     --model_args pretrained=meta-llama/Llama-2-13b-chat-hf,use_accelerate=True \
     --tasks $TASK  \
-    --num_fewshot 0 \
+    --num_fewshot $FEW_SHOT \
     --batch_size 2 \
     --output_path $OUTPUT_PATH/result.json \
     --prompts_file $PROMPTS_FILE \
