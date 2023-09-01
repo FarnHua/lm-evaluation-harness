@@ -5,15 +5,16 @@ export HUGGINGFACE_HUB_CACHE=/work/u5273929/huggingface_hub
 
 
 TASK=$1
-FEW_SHOT=$2
-OUTPUT_PATH=$3
-PROMPTS_FILE=$4
+MODEL_ARGS=$2
+FEW_SHOT=$3
+OUTPUT_PATH=$4
+PROMPTS_FILE=$5
 
 mkdir -p $OUTPUT_PATH
 
 python main.py \
     --model hf-causal-experimental \
-    --model_args pretrained=meta-llama/Llama-2-13b-chat-hf,use_accelerate=True \
+    --model_args MODEL_ARGS \
     --tasks $TASK  \
     --num_fewshot $FEW_SHOT \
     --batch_size 2 \
