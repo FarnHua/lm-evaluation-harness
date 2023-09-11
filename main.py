@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import time
 
 from lm_eval import tasks, evaluator, utils
 
@@ -37,6 +38,8 @@ def parse_args():
 
 
 def main():
+    
+    start_time = time.time()
     args = parse_args()
     
     with open(args.prompts_file, 'r') as f:
@@ -97,7 +100,9 @@ def main():
         f"num_fewshot: {args.num_fewshot}, batch_size: {args.batch_size}{f' ({batch_sizes})' if batch_sizes else ''}"
     )
     print(evaluator.make_table(results))
-
+    step_time = int(time.time() - start_time)
+    time_str = str(datetime.timedelta(seconds=step_time))
+    print(f"---=== Finished in {time_str} ===---")
 
 if __name__ == "__main__":
     main()
