@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+import datetime
 
 from lm_eval import tasks, evaluator, utils
 
