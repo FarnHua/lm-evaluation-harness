@@ -158,7 +158,7 @@ def get_prompt(sentence, system_prompt='', user_prompt=''):
         system_prompt = f'<<SYS>>\n{system_prompt}\n<</SYS>>\n\n'
         texts = [f'[INST] {system_prompt}']
         texts.append(f"{user_prompt} {sentence} [/INST]")
-    elif use_prompt != "":
+    elif user_prompt != "":
         texts.append(f"[INST] {user_prompt} {sentence} [/INST]")
     
     else:
