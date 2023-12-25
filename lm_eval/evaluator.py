@@ -148,6 +148,7 @@ def simple_evaluate(
 decontaminate_suffix = "_decontaminate"
 
 ## for llama2
+## for llama2
 def get_prompt(sentence, system_prompt='', user_prompt=''):
     ## modified from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
     
@@ -158,11 +159,8 @@ def get_prompt(sentence, system_prompt='', user_prompt=''):
         system_prompt = f'<<SYS>>\n{system_prompt}\n<</SYS>>\n\n'
         texts = [f'[INST] {system_prompt}']
         texts.append(f"{user_prompt} {sentence} [/INST]")
-    elif user_prompt != "":
-        texts.append(f"[INST] {user_prompt} {sentence} [/INST]")
-    
     else:
-        texts.append(sentence)
+        texts.append(f'{user_prompt} {sentence}')
     
     return ''.join(texts)
 
